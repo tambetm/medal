@@ -18,7 +18,7 @@ visWeights((RBM.auxVars.batchX'));
 title('Batch Data');
 
 subplottight(3,3,2,.15);
-visWeights((RBM.pVis'));
+%visWeights((RBM.pVis'));
 title('Fantasies');
 
 

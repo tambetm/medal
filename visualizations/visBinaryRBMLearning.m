@@ -14,7 +14,7 @@ visWeights(RBM.auxVars.batchX',0);
 title('Batch Data');
 
 subplottight(3,3,2,.15);
-visWeights(RBM.pVis(:,1:nVis)',0);
+%visWeights(RBM.pVis(:,1:nVis)',0);
 title('Reconstructions');
 
 subplottight(3,3,3,.15);

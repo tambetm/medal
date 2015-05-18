@@ -290,8 +290,8 @@ methods
 		end
 	end
 
-	function self = hidGivVis(self,X,targets,sampleHid)
-	% r = hidGivVis(X,targets,[sampleHid])
+	function self = hidGivVis(self,X,targets,sampleHid,temperature)
+	% r = hidGivVis(X,targets,[sampleHid],[temperature])
 	%--------------------------------------------------------------------------
 	% Update hidden unit probabilities and states conditioned on the current
 	% states of the visible units.
@@ -304,7 +304,11 @@ methods
 	% OUTPUT:
 	%      <r>:  - RBM object with updated hidden unit probabilities/states.
 	%--------------------------------------------------------------------------
-		hidBias = self.c;
+        if ~exist('temperature','var')
+            temperature = 1;
+        end
+
+        hidBias = self.c;
 		if strcmp(self.inputType,'multinomial')
 			% WEIGHT BIASES BY DOCUMENT LENGTH
 			hidBias = bsxfun(@times,self.docLen,hidBias);
@@ -314,7 +318,7 @@ methods
 			% JOINTLY MODEL MULTINOMIAL OVER INPUT CLASSES
 			pHid = self.sigmoid(bsxfun(@plus,X*self.W + targets*self.classW ,hidBias));
 		else
-			pHid = self.sigmoid(bsxfun(@plus,X*self.W, hidBias));
+			pHid = self.sigmoid(bsxfun(@plus,X*self.W, hidBias)/temperature);
 		end
 		
 		if self.rlu % RECTIFIED LINEAR UNITS 
@@ -338,8 +342,8 @@ methods
 		self.aHid = self.aHid.*self.doMask;
 	end
 	
-	function self = visGivHid(self,aHid,sampleVis)
-	% r = hidGivVis(aHid,[sampleVis])
+	function self = visGivHid(self,aHid,sampleVis,temperature)
+	% r = hidGivVis(aHid,[sampleVis],[temperature])
 	%--------------------------------------------------------------------------
 	% Update visible unit states conditioned on the current states of the hidden 
 	% units.
@@ -351,10 +355,13 @@ methods
 	% OUTPUT:
 	%      <r>:  - RBM object with updated visible unit probabilities/states.
 	%--------------------------------------------------------------------------
+        if ~exist('temperature','var')
+            temperature = 1;
+        end
 		nObs = size(aHid,1);
 		switch self.inputType
 			case 'binary'
-				pVis = self.sigmoid(bsxfun(@plus,aHid*self.W',self.b));
+				pVis = self.sigmoid(bsxfun(@plus,aHid*self.W',self.b)/temperature);
 				if sampleVis
 					self.aVis = pVis>rand(nObs,self.nVis);
 				else
@@ -365,7 +372,8 @@ methods
 				mu = bsxfun(@plus,aHid*self.W',self.b);
 				
 				if sampleVis
-					self.aVis = self.drawNormal(mu);					
+                    sigma = ones(1,self.nVis)*temperature;
+					self.aVis = self.drawNormal(mu,sigma);
 				else
 					self.aVis = mu;
 				end
@@ -583,11 +591,11 @@ methods
 	% visualization function handle.
 	%--------------------------------------------------------------------------
 		if ~isempty(self.visFun)
-			try
+			%try
 				self.visFun(self);
-			catch
-				fprintf('\nVisualization failed...')
-			end
+			%catch
+			%	fprintf('\nVisualization failed...')
+			%end
 		end
 	end
 
@@ -750,15 +758,18 @@ methods
 		end
 	end
 
-	function p = drawNormal(self,mu);
-	% p = drawNormal(mu);
+	function p = drawNormal(self,mu,sigma);
+	% p = drawNormal(mu,sigma);
 	%--------------------------------------------------------------------------
-	% Draw samples from a multivariate normal  with mean <mu> and identity
-	% covariance.
+	% Draw samples from a multivariate normal  with mean <mu> and 
+	% covariance <sigma>. If not given, then unit variance is assumed.
 	%--------------------------------------------------------------------------
-		% ASSUMES UNIT VARIANCE OF ALL VISIBLES
-		% (I.E. YOU SHOULD STANDARDIZE INPUTS)
-		p = mvnrnd(mu,ones(1,self.nVis));
+        if ~exist('sigma','var')
+            % ASSUMES UNIT VARIANCE OF ALL VISIBLES
+            % (I.E. YOU SHOULD STANDARDIZE INPUTS)
+            sigma = ones(1,self.nVis);
+        end
+		p = mvnrnd(mu,sigma);
 	end
 
 	function c = softMax(self,X)
